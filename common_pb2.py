@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x63ommon.proto\"/\n\nIndividual\x12\x10\n\x08genotype\x18\x01 \x01(\x0c\x12\x0f\n\x07\x66itness\x18\x02 \x01(\x02\"P\n\nPopulation\x12\x1c\n\x07members\x18\x01 \x03(\x0b\x32\x0b.Individual\x12\x16\n\tproblemID\x18\x02 \x01(\tH\x00\x88\x01\x01\x42\x0c\n\n_problemID\"[\n\x11ImageStreamObject\x12 \n\x07\x64\x65tails\x18\x01 \x01(\x0b\x32\r.ImageDetailsH\x00\x12\x1c\n\x05\x63hunk\x18\x02 \x01(\x0b\x32\x0b.ImageChunkH\x00\x42\x06\n\x04\x64\x61ta\"9\n\x0cImageDetails\x12\x11\n\tproblemID\x18\x01 \x01(\t\x12\x16\n\x0eimageSizeBytes\x18\x02 \x01(\x05\"\x1a\n\nImageChunk\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x42\x1eZ\x1cvolpe-framework/comms/commonb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x63ommon.proto\"/\n\nIndividual\x12\x10\n\x08genotype\x18\x01 \x01(\x0c\x12\x0f\n\x07\x66itness\x18\x02 \x01(\x02\"P\n\nPopulation\x12\x1c\n\x07members\x18\x01 \x03(\x0b\x32\x0b.Individual\x12\x16\n\tproblemID\x18\x02 \x01(\tH\x00\x88\x01\x01\x42\x0c\n\n_problemID\"[\n\x11ImageStreamObject\x12 \n\x07\x64\x65tails\x18\x01 \x01(\x0b\x32\r.ImageDetailsH\x00\x12\x1c\n\x05\x63hunk\x18\x02 \x01(\x0b\x32\x0b.ImageChunkH\x00\x42\x06\n\x04\x64\x61ta\"P\n\x0cImageDetails\x12\x11\n\tproblemID\x18\x01 \x01(\t\x12\x16\n\x0eimageSizeBytes\x18\x02 \x01(\x05\x12\x15\n\rmemoryLimitGB\x18\x03 \x01(\x02\"\x1a\n\nImageChunk\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x42\x1eZ\x1cvolpe-framework/comms/commonb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -39,7 +39,7 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_IMAGESTREAMOBJECT']._serialized_start=147
   _globals['_IMAGESTREAMOBJECT']._serialized_end=238
   _globals['_IMAGEDETAILS']._serialized_start=240
-  _globals['_IMAGEDETAILS']._serialized_end=297
-  _globals['_IMAGECHUNK']._serialized_start=299
-  _globals['_IMAGECHUNK']._serialized_end=325
+  _globals['_IMAGEDETAILS']._serialized_end=320
+  _globals['_IMAGECHUNK']._serialized_start=322
+  _globals['_IMAGECHUNK']._serialized_end=348
 # @@protoc_insertion_point(module_scope)

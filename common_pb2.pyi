@@ -31,12 +31,14 @@ class ImageStreamObject(_message.Message):
     def __init__(self, details: _Optional[_Union[ImageDetails, _Mapping]] = ..., chunk: _Optional[_Union[ImageChunk, _Mapping]] = ...) -> None: ...
 
 class ImageDetails(_message.Message):
-    __slots__ = ("problemID", "imageSizeBytes")
+    __slots__ = ("problemID", "imageSizeBytes", "memoryLimitGB")
     PROBLEMID_FIELD_NUMBER: _ClassVar[int]
     IMAGESIZEBYTES_FIELD_NUMBER: _ClassVar[int]
+    MEMORYLIMITGB_FIELD_NUMBER: _ClassVar[int]
     problemID: str
     imageSizeBytes: int
-    def __init__(self, problemID: _Optional[str] = ..., imageSizeBytes: _Optional[int] = ...) -> None: ...
+    memoryLimitGB: float
+    def __init__(self, problemID: _Optional[str] = ..., imageSizeBytes: _Optional[int] = ..., memoryLimitGB: _Optional[float] = ...) -> None: ...
 
 class ImageChunk(_message.Message):
     __slots__ = ("data",)
