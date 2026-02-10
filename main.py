@@ -10,19 +10,18 @@ from opfunu.cec_based.cec2022 import *
 
 NDIM=20
 
-func = F122022(ndim=NDIM)
+func = F72022(ndim=NDIM)
 
 LOW = func.lb[0]
 HIGH = func.ub[0]
 MUTATE_STD = 5.0
-MUTATION_RATE = 0.2
+MUTATION_RATE = 0.5
 INDPB = 1/NDIM
-CXPROB = 0.9
+CXPROB = 0.5
 
 BASE_POPULATION_SIZE = 50
 
 import numpy as np
-
 
 def fitness(x):
     return float(np.float32(func.evaluate(x)))
@@ -36,7 +35,7 @@ def mutate(x):
         elif mutated[i] > HIGH:
             mutated[i] = HIGH
     if len(mutated) != NDIM:
-        print("mutate")
+        print("ERROR: mutate failed")
     ind = np.astype(mutated, np.float32)
     return (ind, fitness(ind))
 def varAnd(popln):
@@ -57,8 +56,8 @@ def varAnd(popln):
 
 def crossover(x, y):
     rands = np.random.uniform(0, 1, size=NDIM)
-    ind1 = np.array([x[0][i] if rands[i] == 0 else y[0][i] for i in range(NDIM)])
-    ind2 = np.array([y[0][i] if rands[i] == 0 else x[0][i] for i in range(NDIM)])
+    ind1 = np.array([x[0][i] if rands[i] < INDPB else y[0][i] for i in range(NDIM)])
+    ind2 = np.array([y[0][i] if rands[i] < INDPB else x[0][i] for i in range(NDIM)])
     return (ind1, fitness(ind1)), (ind2, fitness(ind2))
 
 def select(popln: list[tuple[np.ndarray, float]], newPop: int):
