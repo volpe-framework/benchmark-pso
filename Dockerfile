@@ -1,4 +1,4 @@
-FROM python:3-slim
+FROM python:3.11-slim
 
 # Sample dockerfile to generate image for testing container mgr
 
@@ -8,12 +8,13 @@ RUN pip install grpcio grpcio_tools
 
 WORKDIR /home
 
+COPY ./volpe_py ./volpe_py
+
 COPY requirements.txt .
 
 RUN pip install -r requirements.txt
 
-COPY *.py .
-COPY *.pyi .
+COPY . .
 
 CMD [ "/usr/local/bin/python3", "./main.py" ]
 

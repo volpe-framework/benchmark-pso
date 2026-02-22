@@ -1,7 +1,7 @@
-from typing import Any, override
-import volpe_container_pb2 as pb
-import common_pb2 as pbc
-import volpe_container_pb2_grpc as vp
+from typing import Any
+from typing_extensions import override
+
+import volpe_py as volpe
 import grpc
 import concurrent.futures
 import threading
@@ -100,15 +100,15 @@ def mutate_popln(popln: list[tuple[np.ndarray, float]]):
     return popln
 
 def popListTostring(popln: list[tuple[np.ndarray, float]]):
-    indList : list[pb.ResultIndividual] = []
+    indList : list[volpe.ResultIndividual] = []
     for mem in popln:
         indList.append(
-                pb.ResultIndividual(representation=np.array_str(mem[0]), 
+                volpe.ResultIndividual(representation=np.array_str(mem[0]), 
                                     fitness=mem[1])
                 )
-    return pb.ResultPopulation(members=indList)
+    return volpe.ResultPopulation(members=indList)
 
-def bstringToPopln(popln: pbc.Population):
+def bstringToPopln(popln: volpe.Population):
     popList = []
     for memb in popln.members:
         popList.append((np.frombuffer(memb.genotype, dtype=np.float32), memb.fitness))
@@ -122,28 +122,28 @@ def adjustSize(popln: list[tuple[np.ndarray, float]], targetSize: int):
         return select(popln, targetSize)
 
 def popListToBytes(popln: list[tuple[np.ndarray, float]]):
-    indList : list[pbc.Individual] = []
+    indList : list[volpe.Individual] = []
     for mem in popln:
-        indList.append(pbc.Individual(genotype=mem[0].astype(np.float32).tobytes(), fitness=mem[1]))
-    return pbc.Population(members=indList, problemID="p1")
+        indList.append(volpe.Individual(genotype=mem[0].astype(np.float32).tobytes(), fitness=mem[1]))
+    return volpe.Population(members=indList, problemID="p1")
 
-class VolpeGreeterServicer(vp.VolpeContainerServicer):
+class VolpeGreeterServicer(volpe.VolpeContainerServicer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.popln : list[tuple[np.ndarray, float]] = [ gen_ind() for _ in range(BASE_POPULATION_SIZE)  ]
         self.poplock = threading.Lock()
 
     @override
-    def SayHello(self, request: pb.HelloRequest, context: grpc.ServicerContext):
-        return pb.HelloReply(message="hello " + request.name)
+    def SayHello(self, request: volpe.HelloRequest, context: grpc.ServicerContext):
+        return volpe.HelloReply(message="hello " + request.name)
     @override
-    def InitFromSeed(self, request: pb.Seed, context: grpc.ServicerContext):
+    def InitFromSeed(self, request: volpe.Seed, context: grpc.ServicerContext):
         """Missing associated documentation comment in .proto file."""
         with self.poplock:
             self.popln = [ gen_ind() for _ in range(BASE_POPULATION_SIZE)  ]
-            return pb.Reply(success=True)
+            return volpe.Reply(success=True)
     @override
-    def InitFromSeedPopulation(self, request: pbc.Population, context: grpc.ServicerContext):
+    def InitFromSeedPopulation(self, request: volpe.Population, context: grpc.ServicerContext):
         """Missing associated documentation comment in .proto file."""
         with self.poplock:
             ogLen = len(self.popln)
@@ -154,40 +154,40 @@ class VolpeGreeterServicer(vp.VolpeContainerServicer):
 
             self.popln = select(self.popln, ogLen)
 
-            return pb.Reply(success=True)
+            return volpe.Reply(success=True)
     @override
-    def GetBestPopulation(self, request: pb.PopulationSize, context):
+    def GetBestPopulation(self, request: volpe.PopulationSize, context):
         """Missing associated documentation comment in .proto file."""
         with self.poplock:
             if self.popln is None:
-                return pbc.Population(members=[], problemID="p1")
+                return volpe.Population(members=[], problemID="p1")
             popSorted = sorted(self.popln, key=lambda x: x[1])
             return popListToBytes(popSorted[:request.size])
     @override
-    def GetResults(self, request: pb.PopulationSize, context):
+    def GetResults(self, request: volpe.PopulationSize, context):
         with self.poplock:
             if self.popln is None:
-                return pbc.Population(members=[], problemID="p1")
+                return volpe.Population(members=[], problemID="p1")
             popSorted = sorted(self.popln, key=lambda x: x[1])
             return popListTostring(popSorted[:request.size])
     @override
-    def GetRandom(self, request: pb.PopulationSize, context):
+    def GetRandom(self, request: volpe.PopulationSize, context):
         with self.poplock:
             if self.popln is None:
-                return pbc.Population(members=[], problemID="p1")
+                return volpe.Population(members=[], problemID="p1")
             popList = get_random_list(self.popln, request.size)
             return popListToBytes(popList)
     @override
-    def AdjustPopulationSize(self, request: pb.PopulationSize, context: grpc.ServicerContext):
+    def AdjustPopulationSize(self, request: volpe.PopulationSize, context: grpc.ServicerContext):
         """Missing associated documentation comment in .proto file."""
         # context.abort(grpc.StatusCode.CANCELLED, "AdjustPopulationSize not allowed")
         # targetSize = request.size
         # # TODO: adjust to targetSize
         # with self.poplock:
         #     self.popln = adjustSize(self.popln, BASE_POPULATION_SIZE)
-        #     return pb.Reply(success=True)
+        #     return volpe.Reply(success=True)
     @override
-    def RunForGenerations(self, request: pb.PopulationSize, context):
+    def RunForGenerations(self, request: volpe.PopulationSize, context):
         """Missing associated documentation comment in .proto file."""
         with self.poplock:
             ogLen = len(self.popln)
@@ -206,11 +206,11 @@ class VolpeGreeterServicer(vp.VolpeContainerServicer):
             self.popln = mutate_popln(newpopln)
             self.popln = expand(self.popln, ogLen*2)
             self.popln = select(self.popln, ogLen)
-        return pb.Reply(success=True)
+        return volpe.Reply(success=True)
 
 if __name__=='__main__':
     server = grpc.server(concurrent.futures.ThreadPoolExecutor(max_workers=10))
-    vp.add_VolpeContainerServicer_to_server(VolpeGreeterServicer(), server)
+    volpe.add_VolpeContainerServicer_to_server(VolpeGreeterServicer(), server)
     server.add_insecure_port("0.0.0.0:8081")
     server.start()
     server.wait_for_termination()

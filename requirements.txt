@@ -1,2 +1,5 @@
 numpy
 opfunu
+grpcio-tools
+protobuf
+setuptools<81
