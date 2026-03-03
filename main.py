@@ -7,6 +7,7 @@ import concurrent.futures
 import threading
 
 from opfunu.cec_based.cec2022 import *
+from deap import base, creator, tools, algorithms
 
 NDIM=20
 
@@ -20,117 +21,78 @@ INDPB = 1/NDIM
 CXPROB = 0.5
 
 BASE_POPULATION_SIZE = 50
+LAMBDA_SIZE = 7*BASE_POPULATION_SIZE
 
 import numpy as np
 
+# Setup DEAP
+creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
+creator.create("Individual", np.ndarray, fitness=creator.FitnessMin)
+
+toolbox = base.Toolbox()
+toolbox.register("attr_float", np.random.uniform, LOW, HIGH)
+toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_float, n=NDIM)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
 def fitness(x):
-    return float(np.float32(func.evaluate(x)))
+    if any(x > HIGH) or any(x < LOW):
+        return (float(np.inf),)
+    return (float(np.float32(func.evaluate(x))),)
 
-def mutate(x):
-    mutated = x[0] + np.random.normal(size=NDIM, scale=MUTATE_STD) * \
-            np.array([ 1 if np.random.random() < INDPB else 0 ])
-    for i in range(NDIM):
-        if mutated[i] < LOW:
-            mutated[i] = LOW
-        elif mutated[i] > HIGH:
-            mutated[i] = HIGH
-    if len(mutated) != NDIM:
-        print("ERROR: mutate failed")
-    ind = np.astype(mutated, np.float32)
-    return (ind, fitness(ind))
-def varAnd(popln):
-    ogLen = len(popln)
-    popln = select(popln, ogLen)
-    newpopln = []
-    for i in range(0, ogLen, 2):
-        if np.random.random() < CXPROB:
-            i1 = i
-            i2 = i+1
-            n1, n2 = crossover(popln[i1], popln[i2])
-            newpopln.append(n1)
-            newpopln.append(n2)
-        else:
-            newpopln.append(popln[i])
-            newpopln.append(popln[i+1])
-    return mutate_popln(newpopln)
-
-def crossover(x, y):
-    rands = np.random.uniform(0, 1, size=NDIM)
-    ind1 = np.array([x[0][i] if rands[i] < INDPB else y[0][i] for i in range(NDIM)])
-    ind2 = np.array([y[0][i] if rands[i] < INDPB else x[0][i] for i in range(NDIM)])
-    return (ind1, fitness(ind1)), (ind2, fitness(ind2))
-
-def select(popln: list[tuple[np.ndarray, float]], newPop: int):
-    newpopln = []
-    while len(newpopln) < newPop:
-        choices = [popln[choice(popln)] for _ in range(3)]
-        selected = min(choices, key=lambda x: x[1])
-        newpopln.append((selected[0].copy(), selected[1]))
-    return newpopln
-
-def choice(popln: list[Any]):
-    l = len(popln)
-    idx = np.random.randint(0, l)
-    return idx
+toolbox.register("evaluate", fitness)
+toolbox.register("mate", tools.cxUniform, indpb=INDPB)
+toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=MUTATE_STD, indpb=INDPB)
+toolbox.register("select", tools.selTournament, tournsize=3)
 
 def gen_ind():
-    ind = (np.random.random(size=NDIM) * (HIGH-LOW) + LOW).astype(np.float32)
-    return (ind, fitness(ind))
+    ind = creator.Individual(np.random.uniform(LOW, HIGH, size=NDIM).astype(np.float32))
+    ind.fitness.values = fitness(ind)
+    return ind
 
-def expand(popln: list[tuple[np.ndarray, float]], newPop: int):
+def expand(popln: list, newPop: int):
     if len(popln) == 0:
         return [ gen_ind() for _ in range(newPop) ]
     if len(popln) >= newPop:
         return popln
     while len(popln) < newPop:
-        x1 = popln[choice(popln)]
-        x2 = popln[choice(popln)]
-        y1, y2 = crossover(x1, x2)
-        popln.append(y1)
-        popln.append(y2)
+        idx1 = np.random.randint(len(popln))
+        idx2 = np.random.randint(len(popln))
+        x1 = toolbox.clone(popln[idx1])
+        x2 = toolbox.clone(popln[idx2])
+        toolbox.mate(x1, x2)
+        x1.fitness.values = fitness(x1)
+        x2.fitness.values = fitness(x2)
+        popln.append(x1)
+        popln.append(x2)
     return popln
 
-def get_random_list(popln: list[tuple[np.ndarray, float]], n: int):
-    return [ popln[np.random.randint(len(popln))] for _ in range(n) ]
-
-def mutate_popln(popln: list[tuple[np.ndarray, float]]):
-    for i in range(len(popln)):
-        if np.random.random() < MUTATION_RATE:
-            popln[i] = mutate(popln[i])
-    return popln
-
-def popListTostring(popln: list[tuple[np.ndarray, float]]):
+def popListTostring(popln: list):
     indList : list[volpe.ResultIndividual] = []
     for mem in popln:
         indList.append(
-                volpe.ResultIndividual(representation=np.array_str(mem[0]), 
-                                    fitness=mem[1])
+                volpe.ResultIndividual(representation=np.array_str(np.array(mem)), 
+                                    fitness=mem.fitness.values[0])
                 )
     return volpe.ResultPopulation(members=indList)
 
 def bstringToPopln(popln: volpe.Population):
     popList = []
     for memb in popln.members:
-        popList.append((np.frombuffer(memb.genotype, dtype=np.float32), memb.fitness))
+        ind = creator.Individual(np.frombuffer(memb.genotype, dtype=np.float32))
+        ind.fitness.values = (memb.fitness,)
+        popList.append(ind)
     return popList
 
-def adjustSize(popln: list[tuple[np.ndarray, float]], targetSize: int):
-    print("ADJUSTSIZE called unexpectedly")
-    if len(popln) < targetSize:
-        return expand(popln, targetSize)
-    else:
-        return select(popln, targetSize)
-
-def popListToBytes(popln: list[tuple[np.ndarray, float]]):
+def popListToBytes(popln: list):
     indList : list[volpe.Individual] = []
     for mem in popln:
-        indList.append(volpe.Individual(genotype=mem[0].astype(np.float32).tobytes(), fitness=mem[1]))
+        indList.append(volpe.Individual(genotype=np.array(mem).astype(np.float32).tobytes(), fitness=mem.fitness.values[0]))
     return volpe.Population(members=indList, problemID="p1")
 
 class VolpeGreeterServicer(volpe.VolpeContainerServicer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.popln : list[tuple[np.ndarray, float]] = [ gen_ind() for _ in range(BASE_POPULATION_SIZE)  ]
+        self.popln = [ gen_ind() for _ in range(BASE_POPULATION_SIZE)  ]
         self.poplock = threading.Lock()
 
     @override
@@ -152,7 +114,7 @@ class VolpeGreeterServicer(volpe.VolpeContainerServicer):
                 self.popln = []
             self.popln.extend(seedPop)
 
-            self.popln = select(self.popln, ogLen)
+            self.popln = toolbox.select(self.popln, ogLen)
 
             return volpe.Reply(success=True)
     @override
@@ -161,52 +123,44 @@ class VolpeGreeterServicer(volpe.VolpeContainerServicer):
         with self.poplock:
             if self.popln is None:
                 return volpe.Population(members=[], problemID="p1")
-            popSorted = sorted(self.popln, key=lambda x: x[1])
+            popSorted = sorted(self.popln, key=lambda x: x.fitness.values[0])
             return popListToBytes(popSorted[:request.size])
     @override
     def GetResults(self, request: volpe.PopulationSize, context):
         with self.poplock:
             if self.popln is None:
                 return volpe.Population(members=[], problemID="p1")
-            popSorted = sorted(self.popln, key=lambda x: x[1])
+            popSorted = sorted(self.popln, key=lambda x: x.fitness.values[0])
             return popListTostring(popSorted[:request.size])
     @override
     def GetRandom(self, request: volpe.PopulationSize, context):
         with self.poplock:
             if self.popln is None:
                 return volpe.Population(members=[], problemID="p1")
-            popList = get_random_list(self.popln, request.size)
+            popList = [self.popln[np.random.randint(len(self.popln))] for _ in range(request.size)]
             return popListToBytes(popList)
     @override
     def AdjustPopulationSize(self, request: volpe.PopulationSize, context: grpc.ServicerContext):
         """Missing associated documentation comment in .proto file."""
-        # context.abort(grpc.StatusCode.CANCELLED, "AdjustPopulationSize not allowed")
-        # targetSize = request.size
-        # # TODO: adjust to targetSize
-        # with self.poplock:
-        #     self.popln = adjustSize(self.popln, BASE_POPULATION_SIZE)
-        #     return volpe.Reply(success=True)
+        pass
     @override
     def RunForGenerations(self, request: volpe.PopulationSize, context):
         """Missing associated documentation comment in .proto file."""
         with self.poplock:
-            for _ in range(request.size):
-                ogLen = len(self.popln)
-                popln = select(self.popln, ogLen)
-                newpopln = [ ]
-                for i in range(0, ogLen, 2):
-                    if np.random.random() < CXPROB:
-                        i1 = i
-                        i2 = i+1
-                        n1, n2 = crossover(popln[i1], popln[i2])
-                        newpopln.append(n1)
-                        newpopln.append(n2)
-                    else:
-                        newpopln.append(popln[i])
-                        newpopln.append(popln[i+1])
-                self.popln = mutate_popln(newpopln)
-                self.popln = expand(self.popln, ogLen*2)
-                self.popln = select(self.popln, ogLen)
+            # Use DEAP's eaMuPlusLambda algorithm
+            self.popln, _ = algorithms.eaMuPlusLambda(
+                self.popln, 
+                toolbox, 
+                mu=len(self.popln),
+                lambda_=LAMBDA_SIZE,
+                cxpb=CXPROB,
+                mutpb=MUTATION_RATE,
+                ngen=request.size,
+                stats=None,
+                halloffame=None,
+                verbose=False
+            )
+                
         return volpe.Reply(success=True)
 
 if __name__=='__main__':

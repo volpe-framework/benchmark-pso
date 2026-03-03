@@ -3,3 +3,4 @@ opfunu
 grpcio-tools
 protobuf
 setuptools<81
+deap
